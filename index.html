@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indicadores Última Milla – Palmas Logistics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root {
+    --azul: #302D68;
+    --naranja: #EF8124;
+    --azul-acero: #005EA0;
+    --bg: #0F0E1A;
+    --surface: #1A1833;
+    --surface2: #241F45;
+    --border: rgba(239,129,36,0.22);
+    --text: #F0EEF8;
+    --text-muted: #9B96C0;
+    --green: #22C55E;
+    --red: #EF4444;
+    --yellow: #F59E0B;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, var(--azul) 0%, #1e1a50 60%, var(--azul-acero) 100%);
+    padding: 14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom: 3px solid var(--naranja);
+    position:sticky; top:0; z-index:100;
+    box-shadow: 0 4px 28px rgba(0,0,0,0.55);
+  }
+  .header-left { display:flex; align-items:center; gap:16px; }
+  .logo-box { background:#fff; border-radius:10px; padding:6px 14px; display:flex; align-items:center; height:50px; }
+  .logo-box img { height:36px; width:auto; display:block; }
+  .header-title h1 { font-size:1.3rem; font-weight:700; color:#fff; letter-spacing:0.2px; }
+  .header-title p  { font-size:0.76rem; color:rgba(255,255,255,0.62); margin-top:3px; }
+  .today-badge { background:rgba(239,129,36,0.18); border:1px solid var(--naranja); color:var(--naranja); padding:5px 14px; border-radius:20px; font-weight:700; font-size:0.8rem; }
+
+  /* FILTERS */
+  .filters-bar {
+    background:var(--surface); padding:12px 28px;
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+    border-bottom:1px solid var(--border);
+  }
+  .filter-group { display:flex; align-items:center; gap:7px; }
+  .filter-label { font-size:0.7rem; color:var(--naranja); font-weight:700; text-transform:uppercase; letter-spacing:0.9px; white-space:nowrap; }
+  select {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    padding:7px 12px; border-radius:8px; font-size:0.82rem; cursor:pointer; outline:none;
+    transition:border-color 0.2s; min-width:120px;
+  }
+  select:hover, select:focus { border-color:var(--naranja); }
+  .btn-reset { background:transparent; border:1px solid var(--border); color:var(--text-muted); padding:7px 14px; border-radius:8px; font-size:0.8rem; cursor:pointer; transition:all 0.2s; margin-left:auto; }
+  .btn-reset:hover { border-color:var(--naranja); color:var(--naranja); }
+
+  /* CONTENT */
+  .content { padding:20px 28px; }
+
+  /* KPI CARDS */
+  .kpi-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:18px; }
+  .kpi-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px 18px; position:relative; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,0.35); }
+  .kpi-card::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; background:var(--naranja); }
+  .kpi-card.blue::before   { background:var(--azul-acero); }
+  .kpi-card.green::before  { background:var(--green); }
+  .kpi-card.red::before    { background:var(--red); }
+  .kpi-card.yellow::before { background:var(--yellow); }
+  .kpi-icon  { font-size:1.3rem; margin-bottom:8px; }
+  .kpi-label { font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
+  .kpi-value { font-size:1.9rem; font-weight:800; line-height:1; margin-bottom:5px; color:var(--text); }
+  .kpi-value.orange { color:var(--naranja); }
+  .kpi-value.green  { color:var(--green); }
+  .kpi-value.red    { color:var(--red); }
+  .kpi-value.blue   { color:var(--azul-acero); }
+  .kpi-value.yellow { color:var(--yellow); }
+  .kpi-sub { font-size:0.7rem; color:var(--text-muted); line-height:1.35; }
+
+  /* CHART ROWS */
+  .charts-row { display:grid; gap:14px; margin-bottom:14px; }
+  .charts-row.two       { grid-template-columns:2fr 1fr; }
+  .charts-row.two-equal { grid-template-columns:1fr 1fr; }
+
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+  .chart-title    { font-size:0.74rem; font-weight:700; color:var(--naranja); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+  .chart-subtitle { font-size:0.7rem; color:var(--text-muted); margin-bottom:14px; }
+
+  .chart-container       { position:relative; height:200px; }
+  .chart-container.short { height:120px; }
+  .chart-container canvas { max-height:100% !important; }
+
+  /* EN RUTA MINI */
+  .en-ruta-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .en-ruta-item { background:var(--surface2); border-radius:9px; padding:12px 14px; border-left:3px solid; }
+  .en-ruta-item.vencido { border-left-color:var(--red); }
+  .en-ruta-item.atime   { border-left-color:var(--green); }
+  .en-ruta-num { font-size:1.7rem; font-weight:800; }
+  .en-ruta-num.red   { color:var(--red); }
+  .en-ruta-num.green { color:var(--green); }
+  .en-ruta-lbl { font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; margin-top:2px; }
+
+  /* MOTIVOS */
+  .motivos-list { margin-top:8px; }
+  .factor-badges { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .motivo-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .motivo-label { font-size:0.75rem; color:var(--text-muted); min-width:160px; }
+  .motivo-bar-wrap { flex:1; background:var(--surface2); border-radius:4px; height:6px; overflow:hidden; }
+  .motivo-bar { height:100%; border-radius:4px; background:var(--naranja); transition:width 0.8s; }
+  .motivo-val { font-size:0.8rem; font-weight:700; min-width:32px; text-align:right; color:var(--naranja); }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  th {
+    background:var(--surface2); color:var(--naranja);
+    font-size:0.65rem; text-transform:uppercase; letter-spacing:0.8px;
+    padding:9px 11px; text-align:left; white-space:nowrap;
+  }
+  td { padding:8px 11px; border-bottom:1px solid rgba(255,255,255,0.045); white-space:nowrap; font-size:0.78rem; }
+  tr:hover td { background:rgba(239,129,36,0.05); }
+  .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:0.68rem; font-weight:700; }
+  .badge-red   { background:rgba(239,68,68,0.15); color:var(--red); }
+  .badge-green { background:rgba(34,197,94,0.12); color:var(--green); }
+
+  /* SECTION HEADER */
+  .section-header { display:flex; align-items:center; gap:9px; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .section-dot   { width:8px; height:8px; background:var(--naranja); border-radius:50%; flex-shrink:0; }
+  .section-title { font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+
+  /* FOOTER */
+  .footer { background:var(--surface); border-top:1px solid var(--border); padding:10px 28px; text-align:center; font-size:0.7rem; color:var(--text-muted); margin-top:14px; }
+  .footer span { color:var(--naranja); font-weight:600; }
+
+  @media (max-width:1200px) { .kpi-grid { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:900px)  { .charts-row.two,.charts-row.two-equal { grid-template-columns:1fr; } }
+  @media (max-width:600px)  { .kpi-grid { grid-template-columns:repeat(2,1fr); } }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    background: linear-gradient(135deg, rgba(48,45,104,0.6), rgba(239,129,36,0.15));
+    border: 1px solid var(--naranja);
+    border-radius: 12px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+  .alert-left { display:flex; align-items:center; gap:14px; }
+  .alert-icon { font-size:2rem; }
+  .alert-title { font-size:1rem; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .alert-sub   { font-size:0.75rem; color:var(--text-muted); }
+  .alert-right { display:flex; gap:20px; flex-shrink:0; }
+  .alert-kpi { text-align:center; }
+  .alert-kpi-val { font-size:1.6rem; font-weight:800; line-height:1; }
+  .alert-kpi-lbl { font-size:0.64rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.7px; margin-top:3px; white-space:nowrap; }
+
+  /* DIAGNÓSTICO GRID */
+  .diag-grid { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:14px; margin-bottom:14px; }
+  .diag-item {
+    display:flex; align-items:flex-start; gap:12px;
+    padding: 10px 12px; border-radius:8px; margin-bottom:8px;
+    border-left: 3px solid;
+  }
+  .diag-critical { background:rgba(239,68,68,0.08); border-left-color:var(--red); }
+  .diag-high     { background:rgba(239,129,36,0.08); border-left-color:var(--naranja); }
+  .diag-med      { background:rgba(245,158,11,0.08); border-left-color:var(--yellow); }
+  .diag-num  { font-size:1.1rem; font-weight:800; color:var(--naranja); min-width:52px; white-space:nowrap; line-height:1.2; }
+  .diag-desc { font-size:0.73rem; color:var(--text); line-height:1.5; }
+  .diag-desc strong { display:block; margin-bottom:2px; color:var(--text); }
+  .diag-desc span { color:var(--text-muted); }
+
+  /* INSIGHT BOX */
+  .insight-box { display:flex; gap:10px; background:rgba(48,45,104,0.4); border-radius:8px; padding:10px 12px; align-items:flex-start; }
+  .insight-icon { font-size:1.1rem; flex-shrink:0; }
+  .insight-text { font-size:0.72rem; color:var(--text-muted); line-height:1.5; }
+  .insight-text strong { color:var(--naranja); }
+
+  /* PLAN GRID */
+  .plan-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:14px; }
+  .plan-card { background:var(--surface2); border-radius:10px; padding:16px 18px; border-top:3px solid; }
+  .plan-p1 { border-top-color:var(--red); }
+  .plan-p2 { border-top-color:var(--naranja); }
+  .plan-p3 { border-top-color:var(--azul-acero); }
+  .plan-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .plan-badge {
+    font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px;
+    padding:2px 8px; border-radius:20px;
+  }
+  .plan-p1 .plan-badge { background:rgba(239,68,68,0.18); color:var(--red); }
+  .plan-p2 .plan-badge { background:rgba(239,129,36,0.18); color:var(--naranja); }
+  .plan-p3 .plan-badge { background:rgba(0,94,160,0.18); color:var(--azul-acero); }
+  .plan-impacto { font-size:0.68rem; color:var(--green); font-weight:700; }
+  .plan-title { font-size:0.82rem; font-weight:700; color:var(--text); margin-bottom:7px; line-height:1.4; }
+  .plan-body  { font-size:0.73rem; color:var(--text-muted); margin-bottom:10px; line-height:1.55; }
+  .plan-body strong { color:var(--naranja); }
+  .plan-actions { padding-left:16px; }
+  .plan-actions li { font-size:0.72rem; color:var(--text-muted); margin-bottom:5px; line-height:1.45; }
+
+  /* TAB NAVIGATION */
+  .tab-nav {
+    background:var(--surface);
+    padding: 0 28px;
+    display:flex;
+    gap:0;
+    border-bottom:1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 12px 22px;
+    font-size:0.8rem;
+    font-weight:600;
+    color:var(--text-muted);
+    background:transparent;
+    border:none;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    transition:all 0.2s;
+    white-space:nowrap;
+  }
+  .tab-btn:hover { color:var(--text); }
+  .tab-btn.active { color:var(--naranja); border-bottom-color:var(--naranja); }
+
+  @media (max-width:900px) {
+    .diag-grid { grid-template-columns:1fr; }
+    .plan-grid { grid-template-columns:1fr; }
+    .alert-banner { flex-direction:column; }
+    .alert-right { flex-wrap:wrap; justify-content:center; }
+  }
+
+  /* badge-yellow */
+  .badge-yellow { background:rgba(245,158,11,0.15); color:var(--yellow); }
+</style>
+  <!-- Data files — generated by Colab script -->
+  <script src="data.js"></script>
+  <script src="analysis.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-box">
+      <img src="data:image/png;base64,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" alt="Palmas Logistics">
+    </div>
+    <div class="header-title">
+      <h1>Indicadores de Última Milla</h1>
+      <p>Dashboard operativo · On Time Delivery y KPIs de entrega</p>
+    </div>
+  </div>
+  <span id="analysis-date" class="today-badge">📅 Cargando...</span>
+</div>
+
+<!-- FILTERS -->
+<div class="filters-bar">
+  <div class="filter-group"><span class="filter-label">Año</span><select id="f-year"><option value="">Todos</option></select></div>
+  <div class="filter-group"><span class="filter-label">Mes</span><select id="f-month"><option value="">Todos</option></select></div>
+  <div class="filter-group"><span class="filter-label">Semana</span><select id="f-week"><option value="">Todas</option></select></div>
+  <div class="filter-group"><span class="filter-label">Cliente</span><select id="f-cliente"><option value="">Todos</option></select></div>
+  <div class="filter-group"><span class="filter-label">Destino</span><select id="f-destino"><option value="">Todos</option></select></div>
+  <button class="btn-reset" onclick="resetFilters()">↺ Limpiar filtros</button>
+</div>
+
+
+<!-- TAB NAVIGATION -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="tabBtn-dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+  <button class="tab-btn" id="tabBtn-analisis" onclick="switchTab('analisis')">🔍 Análisis & Plan de Acción</button>
+</div>
+
+<!-- TAB DASHBOARD -->
+<div id="tab-dashboard" class="tab-content">
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-label">Total Pedidos</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">En el período seleccionado</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⏱️</div>
+      <div class="kpi-label">On Time Delivery</div>
+      <div class="kpi-value orange" id="kpi-ontime">—</div>
+      <div class="kpi-sub" id="kpi-ontime-sub">Sobre pedidos entregados</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">Efectividad</div>
+      <div class="kpi-value green" id="kpi-efectividad">—</div>
+      <div class="kpi-sub" id="kpi-efectividad-sub">Solo completados / excl. en ruta</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-label">No Entregado</div>
+      <div class="kpi-value red" id="kpi-noentregado">—</div>
+      <div class="kpi-sub" id="kpi-noentregado-sub">Liquid. + Cancelados + Siniestros</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-icon">🚚</div>
+      <div class="kpi-label">En Ruta</div>
+      <div class="kpi-value blue" id="kpi-enruta">—</div>
+      <div class="kpi-sub">Pedidos en tránsito</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-label">En Ruta Vencidos</div>
+      <div class="kpi-value yellow" id="kpi-vencidos">—</div>
+      <div class="kpi-sub" id="kpi-vencidos-sub">Superaron fecha prometida</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Evolución + En Ruta -->
+  <div class="charts-row two">
+    <div class="chart-card">
+      <div class="chart-title">📈 Evolución Semanal – On Time Delivery</div>
+      <div class="chart-subtitle">Pedidos entregados y % OTD por semana</div>
+      <div class="chart-container"><canvas id="chart-evolucion"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🚚 Pedidos en Ruta – Estado</div>
+      <div class="chart-subtitle">A tiempo vs vencidos · fecha de análisis</div>
+      <div class="chart-container short"><canvas id="chart-enruta-estado"></canvas></div>
+      <div class="en-ruta-grid">
+        <div class="en-ruta-item atime"><div class="en-ruta-num green" id="er-atime">—</div><div class="en-ruta-lbl">A tiempo</div></div>
+        <div class="en-ruta-item vencido"><div class="en-ruta-num red" id="er-vencido">—</div><div class="en-ruta-lbl">Vencidos</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Cliente + Troncal -->
+  <div class="charts-row two-equal">
+    <div class="chart-card">
+      <div class="chart-title">👥 OTD por Cliente</div>
+      <div class="chart-subtitle">% On Time por compañía · 🟢 ≥95% · 🟠 ≥90% · 🔴 &lt;90%</div>
+      <div class="chart-container"><canvas id="chart-cliente"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🚛 OTD por Proveedor / Troncal</div>
+      <div class="chart-subtitle">% On Time por transportista</div>
+      <div class="chart-container"><canvas id="chart-troncal"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Motivos + Destino -->
+  <div class="charts-row two-equal">
+    <div class="chart-card">
+      <div class="chart-title">⚠️ Motivos de Incumplimiento OTD</div>
+      <div class="chart-subtitle">Pedidos que no cumplieron la fecha prometida</div>
+      <div class="motivos-list" id="motivos-list"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📍 Distribución por Destino</div>
+      <div class="chart-subtitle">Lima vs Provincia · pedidos entregados</div>
+      <div class="chart-container"><canvas id="chart-destino"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="chart-card" style="margin-bottom:0">
+    <div class="section-header">
+      <div class="section-dot"></div>
+      <div class="section-title">Pedidos en Ruta – Detalle completo</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Pedido</th><th>Cliente</th><th>Troncal</th><th>Destino</th>
+          <th>Departamento</th><th>Provincia</th><th>Distrito</th>
+          <th>F. Despacho</th><th>F. Prometida</th>
+          <th>Días Hábiles Atraso</th><th>Estado</th>
+        </tr></thead>
+        <tbody id="tabla-enruta-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+</div>
+    <!-- TAB 2: ANÁLISIS Y PLAN DE ACCIÓN -->
+    <div id="tab-analisis" class="tab-content" style="display:none">
+      <div class="content">
+
+        <!-- ALERT BANNER -->
+        <div class="alert-banner">
+          <div class="alert-left">
+            <span class="alert-icon">🎯</span>
+            <div>
+              <div class="alert-title">OTD actual <strong id="a-otd-actual">94.17%</strong> — Meta <strong>95.00%</strong></div>
+              <div class="alert-sub">Faltan <strong id="a-gap-ped">25 pedidos</strong> adicionales a tiempo para alcanzar el objetivo</div>
+            </div>
+          </div>
+          <div class="alert-right">
+            <div class="alert-kpi">
+              <div class="alert-kpi-val" id="a-tardios-total" style="color:var(--red)">177</div>
+              <div class="alert-kpi-lbl">Pedidos tardíos</div>
+            </div>
+            <div class="alert-kpi">
+              <div class="alert-kpi-val" id="a-tardios-1d" style="color:var(--yellow)">110</div>
+              <div class="alert-kpi-lbl">Con solo 1 día hábil tarde</div>
+            </div>
+            <div class="alert-kpi">
+              <div class="alert-kpi-val" id="a-otd-potencial" style="color:var(--green)">97.79%</div>
+              <div class="alert-kpi-lbl">OTD potencial (recuperando 1d)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DIAGNÓSTICO: 3 columnas -->
+        <div class="diag-grid">
+
+          <!-- COLUMNA 1: RAÍZ DEL PROBLEMA -->
+          <div class="chart-card">
+            <div class="chart-title">🔍 Diagnóstico de raíz</div>
+            <div class="chart-subtitle">¿Por qué estamos por debajo del 95%?</div>
+            <div class="diag-item diag-critical">
+              <div class="diag-num">75.1%</div>
+              <div class="diag-desc">
+                <strong>OLVA Provincia es el driver principal</strong>
+                <span>133 de 177 tardíos (75%) vienen de la ruta OLVA→Provincia con OTD de 81.5%</span>
+              </div>
+            </div>
+            <div class="diag-item diag-high">
+              <div class="diag-num">62.1%</div>
+              <div class="diag-desc">
+                <strong>Tardíos de 1 solo día hábil</strong>
+                <span>110 pedidos llegaron con apenas 1 día de retraso — alta recuperabilidad</span>
+              </div>
+            </div>
+            <div class="diag-item diag-high">
+              <div class="diag-num">65.0%</div>
+              <div class="diag-desc">
+                <strong>Factor transporte domina</strong>
+                <span>115 tardíos (65%) atribuidos a "Demora en entrega" del transportista</span>
+              </div>
+            </div>
+            <div class="diag-item diag-med">
+              <div class="diag-num">33.3%</div>
+              <div class="diag-desc">
+                <strong>Factor cliente significativo</strong>
+                <span>59 tardíos (33%) por "Ausente" — pedidos no recibidos en destino</span>
+              </div>
+            </div>
+            <div class="diag-item diag-med">
+              <div class="diag-num">5.6%</div>
+              <div class="diag-desc">
+                <strong>OYM concentra el 58% de tardíos</strong>
+                <span>103 tardíos de 177 totales, con OTD de 92.9% vs meta 95%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUMNA 2: DISTRIBUCIÓN DÍAS ATRASO -->
+          <div class="chart-card">
+            <div class="chart-title">📊 Días hábiles de atraso</div>
+            <div class="chart-subtitle">Distribución de los 177 pedidos tardíos</div>
+            <div class="chart-container" style="height:180px"><canvas id="chart-dias-atraso"></canvas></div>
+            <div class="insight-box" style="margin-top:14px">
+              <div class="insight-icon">💡</div>
+              <div class="insight-text">
+                <strong>Quick win:</strong> 81.9% de los tardíos tienen ≤2 días hábiles de retraso.
+                Mejoras pequeñas en la gestión de última etapa pueden recuperar el OTD rápidamente.
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUMNA 3: MOTIVOS -->
+          <div class="chart-card">
+            <div class="chart-title">⚠️ Motivos de incumplimiento</div>
+            <div class="chart-subtitle">Sobre 177 pedidos tardíos</div>
+            <div class="chart-container" style="height:180px"><canvas id="chart-motivos-analisis"></canvas></div>
+            <div class="insight-box" style="margin-top:14px">
+              <div class="insight-icon">💡</div>
+              <div class="insight-text">
+                <strong>Acción dual:</strong> Las demoras de transporte (65%) requieren gestión con OLVA.
+                Los ausentes (33%) requieren coordinación de re-entrega con los clientes finales.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RUTAS CRÍTICAS + CLIENTE x TRONCAL -->
+        <div class="charts-row two-equal" style="margin-bottom:14px">
+          <div class="chart-card">
+            <div class="chart-title">🗺️ Rutas críticas — Troncal × Destino</div>
+            <div class="chart-subtitle">OTD por combinación de transportista y destino (mín. 10 pedidos)</div>
+            <div class="table-wrap" style="margin-top:8px">
+              <table id="tabla-rutas"></table>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">👥 Combinaciones críticas — Cliente × Troncal</div>
+            <div class="chart-subtitle">Tardíos por cliente y transportista asignado</div>
+            <div class="table-wrap" style="margin-top:8px">
+              <table id="tabla-cliente-troncal"></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAPA DE CALOR DEPARTAMENTOS -->
+        <div class="chart-card" style="margin-bottom:14px">
+          <div class="chart-title">📍 OTD por Departamento</div>
+          <div class="chart-subtitle">Comparado contra meta 95% — ordenado por tardíos</div>
+          <div class="chart-container" style="height:220px"><canvas id="chart-departamentos"></canvas></div>
+        </div>
+
+        <!-- PLAN DE ACCIÓN -->
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="section-header">
+            <div class="section-dot" style="background:var(--green)"></div>
+            <div class="section-title" style="color:var(--green)">Plan de Acción — Cerrar el GAP al 95%</div>
+          </div>
+
+          <div class="plan-grid">
+
+            <div class="plan-card plan-p1">
+              <div class="plan-header">
+                <span class="plan-badge">P1 · URGENTE</span>
+                <span class="plan-impacto">+1.5–2.5% OTD</span>
+              </div>
+              <div class="plan-title">🚚 Auditoría y SLA con OLVA para rutas de provincia</div>
+              <div class="plan-body">
+                OLVA Provincia concentra el <strong>75% de todos los tardíos</strong> con un OTD de 81.5%.
+                Es el único factor que impide alcanzar la meta.
+              </div>
+              <ul class="plan-actions">
+                <li>Solicitar reporte de incidencias semanal a OLVA por departamento</li>
+                <li>Establecer SLA de entrega específico por ruta con penalidad contractual</li>
+                <li>Priorizar los despachos hacia Arequipa, La Libertad, Lambayeque y Piura (74 tardíos combinados)</li>
+                <li>Evaluar transportista alternativo para los departamentos con OTD &lt;80%</li>
+              </ul>
+            </div>
+
+            <div class="plan-card plan-p1">
+              <div class="plan-header">
+                <span class="plan-badge">P1 · URGENTE</span>
+                <span class="plan-impacto">+0.83% OTD inmediato</span>
+              </div>
+              <div class="plan-title">⚡ Recuperar los 25 pedidos del GAP: enfoque en "1 día hábil tarde"</div>
+              <div class="plan-body">
+                Solo se necesitan <strong>25 pedidos más a tiempo</strong> para pasar el 95%.
+                Hay <strong>110 tardíos de solo 1 día hábil</strong> — son los más fáciles de recuperar.
+              </div>
+              <ul class="plan-actions">
+                <li>Implementar alerta automática el día anterior a vencimiento para pedidos en ruta</li>
+                <li>Crear protocolo de escalamiento a OLVA para pedidos que entran en "día crítico"</li>
+                <li>Revisar si la fecha prometida tiene buffer suficiente para provincia (actualmente no)</li>
+              </ul>
+            </div>
+
+            <div class="plan-card plan-p2">
+              <div class="plan-header">
+                <span class="plan-badge">P2 · IMPORTANTE</span>
+                <span class="plan-impacto">+0.5–1.0% OTD</span>
+              </div>
+              <div class="plan-title">📞 Reducir tasa de "Ausente" (33% de tardíos)</div>
+              <div class="plan-body">
+                59 tardíos son por cliente ausente. No es falla del transportista, pero impacta el OTD.
+                Una gestión proactiva puede reducirlos significativamente.
+              </div>
+              <ul class="plan-actions">
+                <li>Implementar aviso previo al destinatario (SMS/WhatsApp) el día del despacho</li>
+                <li>Coordinar con los clientes (OYM, LIMALINEN) una ventana de entrega confirmada</li>
+                <li>Definir protocolo de re-entrega al día siguiente sin costo adicional para el primer intento fallido</li>
+              </ul>
+            </div>
+
+            <div class="plan-card plan-p2">
+              <div class="plan-header">
+                <span class="plan-badge">P2 · IMPORTANTE</span>
+                <span class="plan-impacto">Impacto en semanas 15 y 17</span>
+              </div>
+              <div class="plan-title">📅 Gestión de picos semanales (sem. 15: 92.4%, sem. 17: 93.7%)</div>
+              <div class="plan-body">
+                Las semanas 15 y 17 concentran <strong>112 tardíos</strong> (63% del total).
+                Coinciden con mayor volumen de despachos.
+              </div>
+              <ul class="plan-actions">
+                <li>Anticipar capacidad de OLVA en semanas de alto volumen (+15% vs semana base)</li>
+                <li>Revisar si los despachos masivos de esas semanas tienen fecha prometida con suficiente holgura</li>
+                <li>Establecer corte de despacho diario para no sobrecargar al transportista</li>
+              </ul>
+            </div>
+
+            <div class="plan-card plan-p3">
+              <div class="plan-header">
+                <span class="plan-badge">P3 · SEGUIMIENTO</span>
+                <span class="plan-impacto">Mejora sostenida</span>
+              </div>
+              <div class="plan-title">📊 Revisión de OYM — mayor cliente con OTD 92.9%</div>
+              <div class="plan-body">
+                OYM tiene 103 tardíos, el 58% del total. 79 de ellos son en ruta OLVA.
+                La solución pasa principalmente por el punto P1 con OLVA.
+              </div>
+              <ul class="plan-actions">
+                <li>Presentar reporte mensual de OTD a OYM con desglose por ruta</li>
+                <li>Revisar si los pedidos de OYM a provincia tienen fecha prometida realista</li>
+                <li>Evaluar si HOSEG (OTD 81.25%) necesita análisis independiente por volumen bajo</li>
+              </ul>
+            </div>
+
+            <div class="plan-card plan-p3">
+              <div class="plan-header">
+                <span class="plan-badge">P3 · SEGUIMIENTO</span>
+                <span class="plan-impacto">Mejora estructural</span>
+              </div>
+              <div class="plan-title">🗓️ Revisión de fechas prometidas para rutas de provincia</div>
+              <div class="plan-body">
+                Departamentos como Arequipa (66.98%), Cajamarca (75%), Amazonas (66.67%) muestran
+                que la fecha prometida puede no ser realista para esas distancias.
+              </div>
+              <ul class="plan-actions">
+                <li>Mapear el lead time real por departamento con OLVA (últimas 8 semanas)</li>
+                <li>Ajustar la fecha prometida en el sistema para rutas largas (Madre de Dios, Amazonas, Cajamarca)</li>
+                <li>Crear tabla de SLA de tránsito por región como referencia para el equipo comercial</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+<div class="footer">
+  <span>Palmas Logistics</span> · Dashboard Última Milla · Días de atraso en días hábiles (excluye domingos y feriados) · Fecha análisis: <span id="footer-date">—</span>
+</div>
+
+<script>
+// Data loaded from data.js
+const MES_MAP = {1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',
+                 7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+const TODAY = new Date('2026-05-11');
+const charts = {};
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function populateFilters() {
+  const uniq = arr => [...new Set(arr)].filter(v => v !== null && v !== undefined && v !== '');
+  const fill = (id, opts, labelFn) => {
+    const sel = document.getElementById(id);
+    opts.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=labelFn?labelFn(v):v; sel.appendChild(o); });
+  };
+  fill('f-year',    uniq(RAW_DATA.map(d=>d['FECHA DE DESPACHO']?.slice(0,4))).sort());
+  fill('f-month',   uniq(RAW_DATA.map(d=>d['Mes'])).sort((a,b)=>a-b), v=>MES_MAP[v]||v);
+  fill('f-week',    uniq(RAW_DATA.map(d=>d['Semana'])).sort((a,b)=>a-b), v=>'Semana '+v);
+  fill('f-cliente', uniq(RAW_DATA.map(d=>d['COMPAÑÍA'])).sort());
+  fill('f-destino', uniq(RAW_DATA.map(d=>d['DESTINO'])).sort());
+}
+
+function getFilters() {
+  return {
+    year:    document.getElementById('f-year').value,
+    month:   document.getElementById('f-month').value,
+    week:    document.getElementById('f-week').value,
+    cliente: document.getElementById('f-cliente').value,
+    destino: document.getElementById('f-destino').value,
+  };
+}
+
+function resetFilters() {
+  ['f-year','f-month','f-week','f-cliente','f-destino'].forEach(id => document.getElementById(id).value='');
+  render();
+}
+
+function filterData(data) {
+  const f = getFilters();
+  return data.filter(d => {
+    if (f.year    && d['FECHA DE DESPACHO']?.slice(0,4) !== f.year)   return false;
+    if (f.month   && String(d['Mes'])    !== f.month)                   return false;
+    if (f.week    && String(d['Semana']) !== f.week)                    return false;
+    if (f.cliente && d['COMPAÑÍA']       !== f.cliente)                 return false;
+    if (f.destino && d['DESTINO']        !== f.destino)                 return false;
+    return true;
+  });
+}
+
+function render() {
+  const filtered   = filterData(RAW_DATA);
+  const completed  = filtered.filter(d => ['COMPLETADO','LIQUIDADO'].includes(d['ESTATUS']));
+  const enRuta     = filtered.filter(d => d['ESTATUS'] === 'EN RUTA');
+  // No entregado = todo menos completados y en ruta
+  const noEnt      = filtered.filter(d => !['EN RUTA','COMPLETADO'].includes(d['ESTATUS']));
+  // Efectividad = completados / (total - en ruta)
+  const baseEfect  = filtered.filter(d => d['ESTATUS'] !== 'EN RUTA');
+
+  // OTD: solo COMPLETADO (sin LIQUIDADO)
+  const soloCompletado = filtered.filter(d => d['ESTATUS'] === 'COMPLETADO');
+  const onTimePed  = soloCompletado.filter(d => d['ON TIME'] === 1);
+  const otdPct     = soloCompletado.length ? (onTimePed.length / soloCompletado.length * 100) : 0;
+  // Efectividad: COMPLETADO / (total - EN RUTA)
+  const efectPct   = baseEfect.length ? (soloCompletado.length / baseEfect.length * 100) : 0;
+  // No entregado: LIQUIDADO + CANCELADO + SINIESTRADO (todo lo que no es COMPLETADO ni EN RUTA)
+  const noEntPct   = baseEfect.length ? (noEnt.length / baseEfect.length * 100) : 0;
+
+  const enRutaVenc = enRuta.filter(d => new Date(d['FECHA PROMETIDA']) < TODAY);
+  const enRutaTime = enRuta.filter(d => new Date(d['FECHA PROMETIDA']) >= TODAY);
+
+  document.getElementById('kpi-total').textContent        = filtered.length.toLocaleString('es-PE');
+  document.getElementById('kpi-ontime').textContent       = otdPct.toFixed(2) + '%';
+  document.getElementById('kpi-ontime-sub').textContent   = onTimePed.length.toLocaleString() + ' / ' + soloCompletado.length.toLocaleString() + ' entregados';
+  document.getElementById('kpi-efectividad').textContent  = efectPct.toFixed(2) + '%';
+  document.getElementById('kpi-efectividad-sub').textContent = soloCompletado.length.toLocaleString() + ' / ' + baseEfect.length.toLocaleString() + ' (excl. en ruta)';
+  document.getElementById('kpi-noentregado').textContent  = noEntPct.toFixed(2) + '%';
+  document.getElementById('kpi-noentregado-sub').textContent = noEnt.length + ' pedidos';
+  document.getElementById('kpi-enruta').textContent       = enRuta.length;
+  document.getElementById('kpi-vencidos').textContent     = enRutaVenc.length;
+  document.getElementById('kpi-vencidos-sub').textContent = 'De ' + enRuta.length + ' en tránsito';
+  document.getElementById('er-atime').textContent         = enRutaTime.length;
+  document.getElementById('er-vencido').textContent       = enRutaVenc.length;
+
+  renderEvolucion(filtered);
+  renderEnRutaEstado(enRutaTime.length, enRutaVenc.length);
+  renderCliente(filtered);
+  renderTroncal(filtered);
+  renderMotivos(filtered);
+  renderDestino(completed);
+  renderTablaEnRuta(enRuta);
+}
+
+const TT   = { backgroundColor:'#1A1833', borderColor:'#EF8124', borderWidth:1, titleColor:'#F0EEF8', bodyColor:'#9B96C0', padding:9 };
+const TICK = { color:'#9B96C0', font:{ size:10 } };
+const GRID = { color:'rgba(255,255,255,0.05)' };
+
+function renderEvolucion(filtered) {
+  destroyChart('evolucion');
+  const weeks   = [...new Set(filtered.map(d=>d['Semana']))].filter(Boolean).sort((a,b)=>a-b);
+  const pedidos = weeks.map(w => filtered.filter(d=>d['Semana']===w && ['COMPLETADO','EN RUTA'].includes(d['ESTATUS'])).length);
+  const otds    = weeks.map(w => {
+    const comp = filtered.filter(d=>d['Semana']===w && d['ESTATUS']==='COMPLETADO');
+    const ot   = comp.filter(d=>d['ON TIME']===1);
+    return comp.length ? +(ot.length/comp.length*100).toFixed(1) : null;
+  });
+  charts['evolucion'] = new Chart(document.getElementById('chart-evolucion').getContext('2d'), {
+    type:'bar',
+    plugins: [ChartDataLabels],
+    data:{ labels:weeks.map(w=>'Sem '+w), datasets:[
+      {
+        label:'Pedidos', data:pedidos,
+        backgroundColor:'rgba(48,45,104,0.78)', borderColor:'#302D68', borderWidth:1, borderRadius:4, yAxisID:'y',
+        datalabels:{ display:false }
+      },
+      {
+        label:'OTD %', data:otds, type:'line',
+        borderColor:'#EF8124', backgroundColor:'rgba(239,129,36,0.08)',
+        pointBackgroundColor:'#EF8124', pointRadius:5, tension:0.3, yAxisID:'y1', borderWidth:2,
+        datalabels:{
+          display: true,
+          align: 'top',
+          anchor: 'top',
+          color: '#EF8124',
+          font: { size:11, weight:'700' },
+          formatter: v => v !== null ? v+'%' : '',
+          offset: 4
+        }
+      }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      layout:{ padding:{ top:24 } },
+      plugins:{
+        legend:{labels:{color:'#9B96C0',font:{size:11},boxWidth:12,padding:10}},
+        tooltip:TT,
+        datalabels:{ display:false }
+      },
+      scales:{
+        y:  { type:'linear', position:'left',  grid:GRID, ticks:TICK },
+        y1: { type:'linear', position:'right', min:80, max:100, grid:{drawOnChartArea:false}, ticks:{color:'#EF8124',font:{size:10},callback:v=>v+'%'} },
+        x:  { grid:{color:'rgba(255,255,255,0.03)'}, ticks:TICK }
+      }
+    }
+  });
+}
+
+function renderEnRutaEstado(atime, vencidos) {
+  destroyChart('enruta-estado');
+  charts['enruta-estado'] = new Chart(document.getElementById('chart-enruta-estado').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:['A tiempo','Vencidos'], datasets:[{ data:[atime,vencidos], backgroundColor:['rgba(34,197,94,0.82)','rgba(239,68,68,0.82)'], borderColor:['#22C55E','#EF4444'], borderWidth:2, hoverOffset:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{position:'right',labels:{color:'#9B96C0',font:{size:11},boxWidth:10,padding:10}}, tooltip:TT }
+    }
+  });
+}
+
+function renderCliente(filtered) {
+  destroyChart('cliente');
+  const comp     = filtered.filter(d=>d['ESTATUS']==='COMPLETADO');
+  const clientes = [...new Set(comp.map(d=>d['COMPAÑÍA']))].filter(Boolean).sort();
+  const otds     = clientes.map(c => { const g=comp.filter(d=>d['COMPAÑÍA']===c); const ot=g.filter(d=>d['ON TIME']===1); return g.length?+(ot.length/g.length*100).toFixed(1):0; });
+  const colors   = otds.map(v => v>=95?'rgba(34,197,94,0.78)':v>=90?'rgba(239,129,36,0.78)':'rgba(239,68,68,0.78)');
+  charts['cliente'] = new Chart(document.getElementById('chart-cliente').getContext('2d'), {
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{ labels:clientes, datasets:[{ label:'OTD %', data:otds, backgroundColor:colors, borderWidth:0, borderRadius:4,
+      datalabels:{ anchor:'end', align:'end', color:'#F0EEF8', font:{size:11,weight:'700'}, formatter:v=>v+'%', offset:2 }
+    }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ right:40 } },
+      plugins:{ legend:{display:false}, tooltip:{...TT,callbacks:{label:c=>' OTD: '+c.parsed.x+'%'}}, datalabels:{} },
+      scales:{ x:{min:0,max:105,grid:GRID,ticks:{...TICK,callback:v=>v+'%'}}, y:{grid:{display:false},ticks:{color:'#9B96C0',font:{size:11}}} }
+    }
+  });
+}
+
+function renderTroncal(filtered) {
+  destroyChart('troncal');
+  const comp  = filtered.filter(d=>d['ESTATUS']==='COMPLETADO');
+  const tron  = [...new Set(comp.map(d=>d['TRONCAL']))].filter(Boolean).sort();
+  const otds  = tron.map(t => { const g=comp.filter(d=>d['TRONCAL']===t); const ot=g.filter(d=>d['ON TIME']===1); return g.length?+(ot.length/g.length*100).toFixed(1):0; });
+  const PAL   = ['rgba(48,45,104,0.85)','rgba(0,94,160,0.85)','rgba(239,129,36,0.85)','rgba(34,197,94,0.78)'];
+  charts['troncal'] = new Chart(document.getElementById('chart-troncal').getContext('2d'), {
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{ labels:tron, datasets:[{ label:'OTD %', data:otds, backgroundColor:PAL.slice(0,tron.length), borderWidth:0, borderRadius:4,
+      datalabels:{ anchor:'end', align:'end', color:'#F0EEF8', font:{size:11,weight:'700'}, formatter:v=>v+'%', offset:2 }
+    }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ right:40 } },
+      plugins:{ legend:{display:false}, tooltip:{...TT,callbacks:{label:c=>' OTD: '+c.parsed.x+'%'}}, datalabels:{} },
+      scales:{ x:{min:0,max:105,grid:GRID,ticks:{...TICK,callback:v=>v+'%'}}, y:{grid:{display:false},ticks:{color:'#9B96C0',font:{size:12}}} }
+    }
+  });
+}
+
+function renderMotivos(filtered) {
+  const noOt = filtered.filter(d=>d['ON TIME']===0 && d['ESTATUS']==='COMPLETADO');
+  const motCount={}, factCount={};
+  noOt.forEach(d=>{
+    const m=d['MOTIVO NO ENTREGA']||'Sin motivo';
+    const f=d['FACTOR NO ENTREGA']||'Sin factor';
+    motCount[m]=(motCount[m]||0)+1; factCount[f]=(factCount[f]||0)+1;
+  });
+  const sorted = Object.entries(motCount).sort((a,b)=>b[1]-a[1]);
+  const max    = sorted.length ? sorted[0][1] : 1;
+  const FC     = { 'TRANSPORTE':'#EF8124','CLIENTE':'#005EA0','COMPAÑIA':'#302D68' };
+  const el     = document.getElementById('motivos-list');
+  el.innerHTML = '';
+  const factDiv = document.createElement('div');
+  factDiv.className = 'factor-badges';
+  Object.entries(factCount).sort((a,b)=>b[1]-a[1]).forEach(([f,c]) => {
+    const b=document.createElement('span'); const col=FC[f]||'#666';
+    b.style.cssText=`background:${col}22;border:1px solid ${col};color:${col};padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;`;
+    b.textContent=f+': '+c; factDiv.appendChild(b);
+  });
+  el.appendChild(factDiv);
+  const totalNoOt = noOt.length;
+  sorted.slice(0,6).forEach(([m,c]) => {
+    const barPct=(c/max*100).toFixed(0);
+    const pctOfTotal = totalNoOt ? (c/totalNoOt*100).toFixed(1)+'%' : '';
+    const row=document.createElement('div'); row.className='motivo-row';
+    row.innerHTML=`<span class="motivo-label">${m}</span><div class="motivo-bar-wrap"><div class="motivo-bar" style="width:${barPct}%"></div></div><span class="motivo-val">${c} <span style="color:var(--text-muted);font-size:0.65rem;font-weight:400">(${pctOfTotal})</span></span>`;
+    el.appendChild(row);
+  });
+  if (!sorted.length) el.innerHTML='<p style="color:var(--text-muted);font-size:0.8rem;padding:10px 0">Sin incumplimientos en el período</p>';
+}
+
+function renderDestino(completed) {
+  destroyChart('destino');
+  const destCount={};
+  completed.forEach(d=>{ const dest=d['DESTINO']||'Otro'; destCount[dest]=(destCount[dest]||0)+1; });
+  const destTotal = Object.values(destCount).reduce((a,b)=>a+b,0);
+  charts['destino'] = new Chart(document.getElementById('chart-destino').getContext('2d'), {
+    type:'doughnut',
+    plugins:[ChartDataLabels],
+    data:{ labels:Object.keys(destCount), datasets:[{ data:Object.values(destCount),
+      backgroundColor:['rgba(48,45,104,0.88)','rgba(239,129,36,0.88)','rgba(0,94,160,0.88)'],
+      borderWidth:0, hoverOffset:6,
+      datalabels:{
+        color:'#fff', font:{size:12,weight:'700'},
+        formatter:(v,ctx) => {
+          const pct = (v/destTotal*100).toFixed(1);
+          return ctx.chart.data.labels[ctx.dataIndex]+'\n'+pct+'%';
+        }
+      }
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{ legend:{position:'right',labels:{color:'#9B96C0',font:{size:11},boxWidth:10,padding:12}}, tooltip:TT, datalabels:{} }
+    }
+  });
+}
+
+function renderTablaEnRuta(enRuta) {
+  const tbody = document.getElementById('tabla-enruta-body');
+  tbody.innerHTML = '';
+  if (!enRuta.length) {
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:20px">Sin pedidos en ruta en el período seleccionado</td></tr>';
+    return;
+  }
+  enRuta.sort((a,b)=>new Date(a['FECHA PROMETIDA'])-new Date(b['FECHA PROMETIDA'])).forEach(d => {
+    const vencido = new Date(d['FECHA PROMETIDA']) < TODAY;
+    const dias    = d['DIAS_ATRASO_HABIL'];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:700;color:var(--naranja)">${d['PEDIDO']}</td>
+      <td>${d['COMPAÑÍA']}</td>
+      <td>${d['TRONCAL']}</td>
+      <td>${d['DESTINO']}</td>
+      <td>${d['DEPARTAMENTO'] || '—'}</td>
+      <td>${d['PROVINCIA']   || '—'}</td>
+      <td>${d['DISTRITO']    || '—'}</td>
+      <td>${d['FECHA DE DESPACHO']}</td>
+      <td>${d['FECHA PROMETIDA']}</td>
+      <td style="text-align:center">${dias > 0 ? '<span style="color:var(--red);font-weight:700">'+dias+'d</span>' : '<span style="color:var(--green)">0d</span>'}</td>
+      <td>${vencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✅ A tiempo</span>'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function init() {
+  const todayStr = TODAY.toLocaleDateString('es-PE',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('analysis-date').textContent = '📅 ' + todayStr;
+  document.getElementById('footer-date').textContent   = todayStr;
+  populateFilters();
+  render();
+  ['f-year','f-month','f-week','f-cliente','f-destino'].forEach(id =>
+    document.getElementById(id).addEventListener('change', render)
+  );
+}
+// External data scripts load synchronously before this runs
+document.addEventListener('DOMContentLoaded', function() {
+  init();
+  if (typeof initAnalysis === 'function') initAnalysis();
+});
+
+// Analysis loaded from analysis.js
